@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/water2027/webhook/internal/application"
 	"github.com/water2027/webhook/internal/domain/webhook"
 	"github.com/water2027/webhook/internal/infrastructure/config"
@@ -15,27 +14,32 @@ import (
 
 func main() {
 	// 1. 初始化配置
-	config.InitConfig()
+	config.Load()
 
 	// 2. 初始化数据库连接池
-	dbURL := config.GetWithDefault("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/webhook?sslmode=disable")
-	dbPool, err := pgxpool.New(context.Background(), dbURL)
+	ctx := context.Background()
+	dbPool, err := persistence.NewPostgresPool(ctx, config.GlobalConfig.DatabaseURL)
 	if err != nil {
-		log.Fatalf("Unable to connect to database: %v\n", err)
+		log.Fatalf("Database initialization failed: %v\n", err)
 	}
 	defer dbPool.Close()
 
-	// 3. 初始化基础设施
+	// 3. 初始化数据库 Schema
+	if err := persistence.InitSchema(ctx, dbPool); err != nil {
+		log.Fatalf("Schema initialization failed: %v\n", err)
+	}
+
+	// 4. 初始化基础设施
 	sourceRepo := persistence.NewPostgresSourceRepository(dbPool)
 	messageSender := feishu.NewLarkBot()
 
-	// 4. 初始化领域服务
+	// 5. 初始化领域服务
 	webhookService := webhook.NewService()
 
-	// 5. 初始化应用层编排
+	// 6. 初始化应用层编排
 	webhookApp := application.NewWebhookApp(sourceRepo, webhookService, messageSender)
 
-	// 6. 注册路由
+	// 7. 注册路由
 	http.HandleFunc("/sources", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
 			var body struct {
@@ -73,7 +77,7 @@ func main() {
 		}
 	})
 
-	port := config.GetWithDefault("PORT", "8080")
+	port := config.GlobalConfig.Port
 	log.Printf("Server starting on :%s...\n", port)
 	if err := http.ListenAndServe(":"+port, nil); err != nil {
 		log.Fatal(err)

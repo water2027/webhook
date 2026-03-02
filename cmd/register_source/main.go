@@ -7,7 +7,6 @@ import (
 	"log"
 	"os"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/water2027/webhook/internal/domain/source"
 	"github.com/water2027/webhook/internal/infrastructure/config"
 	"github.com/water2027/webhook/internal/infrastructure/persistence"
@@ -22,19 +21,23 @@ func main() {
 		os.Exit(1)
 	}
 
-	config.InitConfig()
+	config.Load()
 
-	dbURL := config.GetWithDefault("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/webhook?sslmode=disable")
-	dbPool, err := pgxpool.New(context.Background(), dbURL)
+	ctx := context.Background()
+	dbPool, err := persistence.NewPostgresPool(ctx, config.GlobalConfig.DatabaseURL)
 	if err != nil {
 		log.Fatalf("Unable to connect to database: %v", err)
 	}
 	defer dbPool.Close()
 
+	if err := persistence.InitSchema(ctx, dbPool); err != nil {
+		log.Fatalf("Schema initialization failed: %v\n", err)
+	}
+
 	repo := persistence.NewPostgresSourceRepository(dbPool)
 
 	s := source.NewSource(*name)
-	if err := repo.Save(context.Background(), s); err != nil {
+	if err := repo.Save(ctx, s); err != nil {
 		log.Fatalf("Failed to save source: %v", err)
 	}
 

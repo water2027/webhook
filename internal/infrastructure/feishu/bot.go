@@ -16,8 +16,8 @@ type larkBot struct {
 }
 
 func NewLarkBot() notification.MessageSender {
-	client := lark.NewClient(config.Get("FEISHU_APP_ID"), config.Get("FEISHU_APP_SECRET"))
-	receiveId := config.Get("FEISHU_OPEN_ID")
+	client := lark.NewClient(config.GlobalConfig.FeishuAppID, config.GlobalConfig.FeishuAppSecret)
+	receiveId := config.GlobalConfig.FeishuOpenID
 	return &larkBot{client: client, receiveId: receiveId}
 }
 

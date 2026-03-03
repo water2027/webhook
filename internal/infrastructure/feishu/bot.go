@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 
 	"github.com/larksuite/oapi-sdk-go/v3"
 	"github.com/larksuite/oapi-sdk-go/v3/core"
@@ -32,9 +33,10 @@ func (b *larkBot) Send(ctx context.Context, message *notification.Message) error
 	msg := fmt.Sprintf("来自: %s\n标题: %s\n内容: %s\n时间: %s", message.Source, message.Title, message.Content, message.Date)
 	contentBytes, err := json.Marshal(LarkTextContent{Text: msg})
 	if err != nil {
+		slog.Error("Failed to marshal lark content", "error", err)
 		return fmt.Errorf("failed to marshal lark content: %w", err)
 	}
-	contentStr := string(contentBytes) // 这里生成的是绝对安全的 JSON 字符串
+	contentStr := string(contentBytes)
 	req := larkim.NewCreateMessageReqBuilder().
 		ReceiveIdType(`open_id`).
 		Body(larkim.NewCreateMessageReqBodyBuilder().
@@ -46,10 +48,17 @@ func (b *larkBot) Send(ctx context.Context, message *notification.Message) error
 
 	resp, err := b.client.Im.V1.Message.Create(ctx, req)
 	if err != nil {
+		slog.Error("Lark API call failed", "error", err)
 		return err
 	}
 
 	if !resp.Success() {
+		slog.Error("Lark message creation failed",
+			"code", resp.Code,
+			"msg", resp.Msg,
+			"requestId", resp.RequestId(),
+			"errorResponse", larkcore.Prettify(resp.CodeError),
+		)
 		return fmt.Errorf("logId: %s, error response: \n%s", resp.RequestId(), larkcore.Prettify(resp.CodeError))
 	}
 

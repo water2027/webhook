@@ -11,6 +11,8 @@ type Config struct {
 	FeishuAppID     string
 	FeishuAppSecret string
 	FeishuOpenID    string
+	LogLevel        string
+	LogFormat       string
 }
 
 var GlobalConfig *Config
@@ -24,6 +26,8 @@ func Load() {
 		FeishuAppID:     os.Getenv("FEISHU_APP_ID"),
 		FeishuAppSecret: os.Getenv("FEISHU_APP_SECRET"),
 		FeishuOpenID:    os.Getenv("FEISHU_OPEN_ID"),
+		LogLevel:        getWithDefault("LOG_LEVEL", "info"),
+		LogFormat:       getWithDefault("LOG_FORMAT", "json"),
 	}
 }
 

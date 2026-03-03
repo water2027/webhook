@@ -2,6 +2,7 @@ package feishu
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/larksuite/oapi-sdk-go/v3"
@@ -17,6 +18,10 @@ type larkBot struct {
 	client    *lark.Client
 }
 
+type LarkTextContent struct {
+	Text string `json:"text"`
+}
+
 func NewLarkBot() interfaces.MessageSender {
 	client := lark.NewClient(config.GlobalConfig.FeishuAppID, config.GlobalConfig.FeishuAppSecret)
 	receiveId := config.GlobalConfig.FeishuOpenID
@@ -25,12 +30,17 @@ func NewLarkBot() interfaces.MessageSender {
 
 func (b *larkBot) Send(ctx context.Context, message *notification.Message) error {
 	msg := fmt.Sprintf("来自: %s\n标题: %s\n内容: %s\n时间: %s", message.Source, message.Title, message.Content, message.Date)
+	contentBytes, err := json.Marshal(LarkTextContent{Text: msg})
+	if err != nil {
+		return fmt.Errorf("failed to marshal lark content: %w", err)
+	}
+	contentStr := string(contentBytes) // 这里生成的是绝对安全的 JSON 字符串
 	req := larkim.NewCreateMessageReqBuilder().
 		ReceiveIdType(`open_id`).
 		Body(larkim.NewCreateMessageReqBodyBuilder().
 			ReceiveId(b.receiveId).
 			MsgType(`text`).
-			Content(fmt.Sprintf(`{"text":"%s"}`, msg)).
+			Content(contentStr).
 			Build()).
 		Build()
 

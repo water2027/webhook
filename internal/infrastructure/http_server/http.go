@@ -2,6 +2,7 @@ package http_server
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/water2027/webhook/internal/domain/notification"
@@ -50,6 +51,7 @@ func (s *httpServer) Start(port string) error {
 			secret := r.Header.Get("X-Webhook-Secret")
 
 			if err := s.webhookApp.Handle(r.Context(), &payload, secret); err != nil {
+				fmt.Println(err.Error())
 				http.Error(w, err.Error(), http.StatusUnauthorized)
 				return
 			}

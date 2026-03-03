@@ -2,14 +2,12 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"github.com/water2027/webhook/internal/application"
-	"github.com/water2027/webhook/internal/domain/webhook"
 	"github.com/water2027/webhook/internal/infrastructure/config"
 	"github.com/water2027/webhook/internal/infrastructure/feishu"
 	"github.com/water2027/webhook/internal/infrastructure/persistence"
 	"log"
-	"net/http"
+	"github.com/water2027/webhook/internal/infrastructure/http_server"
 )
 
 func main() {
@@ -33,53 +31,14 @@ func main() {
 	sourceRepo := persistence.NewPostgresSourceRepository(dbPool)
 	messageSender := feishu.NewLarkBot()
 
-	// 5. 初始化领域服务
-	webhookService := webhook.NewService()
-
 	// 6. 初始化应用层编排
-	webhookApp := application.NewWebhookApp(sourceRepo, webhookService, messageSender)
-
-	// 7. 注册路由
-	http.HandleFunc("/sources", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodPost {
-			var body struct {
-				Name string `json:"name"`
-			}
-			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-			src, err := webhookApp.RegisterSource(r.Context(), body.Name)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			json.NewEncoder(w).Encode(src)
-		}
-	})
-
-	http.HandleFunc("/webhook", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodPost {
-			var payload webhook.Payload
-			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-
-			timestamp := r.Header.Get("X-Webhook-Timestamp")
-			signature := r.Header.Get("X-Webhook-Signature")
-
-			if err := webhookApp.Handle(r.Context(), &payload, timestamp, signature); err != nil {
-				http.Error(w, err.Error(), http.StatusUnauthorized)
-				return
-			}
-			w.WriteHeader(http.StatusOK)
-		}
-	})
+	webhookApp := application.NewWebhookApp(sourceRepo, messageSender)
 
 	port := config.GlobalConfig.Port
+	server := http_server.NewHTTPServer(webhookApp)
+	
 	log.Printf("Server starting on :%s...\n", port)
-	if err := http.ListenAndServe(":"+port, nil); err != nil {
+	if err := server.Start(config.GlobalConfig.Port); err != nil {
 		log.Fatal(err)
 	}
 }

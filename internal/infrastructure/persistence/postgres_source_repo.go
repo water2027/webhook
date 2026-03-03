@@ -2,15 +2,17 @@ package persistence
 
 import (
 	"context"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/water2027/webhook/internal/domain/source"
+	"github.com/water2027/webhook/internal/interfaces"
 )
 
 type postgresSourceRepository struct {
 	db *pgxpool.Pool
 }
 
-func NewPostgresSourceRepository(db *pgxpool.Pool) source.SourceRepository {
+func NewPostgresSourceRepository(db *pgxpool.Pool) interfaces.SourceRepository {
 	return &postgresSourceRepository{db: db}
 }
 

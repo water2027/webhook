@@ -30,3 +30,11 @@ func generateSecret() string {
 	rand.Read(b)
 	return hex.EncodeToString(b)
 }
+
+func (s *Source) Verify(id string, secret string) bool {
+	return s.ID == id && s.Secret == secret
+}
+
+func (s *Source) ResetSecret() {
+	s.Secret = generateSecret()
+}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/water2027/webhook/internal/domain/source"
+	"github.com/water2027/webhook/internal/interfaces"
 	"sync"
 )
 
@@ -12,7 +13,7 @@ type memorySourceRepository struct {
 	sources map[string]*source.Source
 }
 
-func NewMemorySourceRepository() source.SourceRepository {
+func NewMemorySourceRepository() interfaces.SourceRepository {
 	return &memorySourceRepository{
 		sources: make(map[string]*source.Source),
 	}
